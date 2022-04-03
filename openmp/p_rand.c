@@ -43,11 +43,15 @@ int main(int argc, char** argv) {
 
     double time = fill_array(array, size, threads);
 
-    if (!debug) {
-        printf("%d,%f,%d\n", threads, time, array[0]);
-    } else {
-        for (int i = 0; i < size; i++) {
-            printf("%d\n", array[i]);
+    start = omp_get_wtime();
+#pragma omp parallel num_threads(threads) private(i, seed, my_n) shared(array)
+    {
+        seed = (uint)omp_get_wtime();
+        my_n = omp_get_thread_num();
+#pragma omp for schedule(static)
+        for (i = my_n; i < size; i += threads) {
+            seed = p_rand(seed);
+            array[i] = seed;
         }
     }
 
