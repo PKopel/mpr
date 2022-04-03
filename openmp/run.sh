@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-echo > results
+echo "n_threads,time,rand"> results
 
 for i in {1..10}; do
     for _ in {1..10}; do
