@@ -36,11 +36,15 @@ int main(int argc, char** argv) {
 #pragma omp for schedule(static)
         for (i = my_n; i < size; i += threads) {
             seed = p_rand(seed);
-            array[i] = seed;
+            array[i] = seed % 20;
         }
     }
     end = omp_get_wtime();
-    printf("%d,%f,%d\n", threads, end - start, array[0]);
+    // printf("%d,%f,%d\n", threads, end - start, array[0]);
+
+    for (i = 0; i < size; i++) {
+        printf("%d\n", array[i]);
+    }
 
     free((void*)array);
     return 0;
