@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
     start = omp_get_wtime();
 #pragma omp parallel num_threads(threads) private(i) private(seed) private(my_n) shared(array)
     {
-        seed = (uint)omp_get_wtime();
         my_n = omp_get_thread_num();
+        seed = (uint)omp_get_wtime() + (uint)my_n;
 #pragma omp for schedule(static)
         for (i = my_n; i < size; i += threads) {
             seed = p_rand(seed);
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
         }
     }
     end = omp_get_wtime();
-    printf("%f\t%d\n", end - start, array[0]);
+    printf("%d,%f,%d\n", threads, end - start, array[0]);
 
     free((void*)array);
     return 0;
