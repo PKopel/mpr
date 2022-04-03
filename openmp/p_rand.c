@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     //     printf("%f\n", end - start);
 
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(i) private(seed) private(my_n) shared(array)
+#pragma omp parallel num_threads(threads) private(i, seed, my_n) shared(array)
     {
         seed = (uint)omp_get_wtime();
         my_n = omp_get_thread_num();
