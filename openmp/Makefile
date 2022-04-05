@@ -1,5 +1,6 @@
 CC ?= gcc
 OPTIONS ?= -Wall -fopenmp
+BUCKETS ?= bucket.h bucket.c
 ARGS ?=
 
 .PRECIOUS: %.o
