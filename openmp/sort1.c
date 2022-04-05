@@ -2,45 +2,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "bucket.h"
 
-#define MY_RAND_MAX 32768
 #define N_BUCKETS 10
-
-typedef struct bucket {
-    uint* array;
-    int size;
-    int cap;
-} bucket;
-
-uint p_rand(uint current) {
-    uint next = (current + 1) * 1103515243 + 12345;
-    return (uint)(next / 65536) % MY_RAND_MAX;
-}
-
-bucket new_bucket(int size) {
-    uint* array = (uint*)malloc(sizeof(uint) * size);
-    bucket new = {array, 0, size};
-    return new;
-}
-
-void insert(bucket* b, uint v) {
-    b->array[b->size] = v;
-    b->size += 1;
-}
-
-void insert_sort(uint* array, int size) {
-    int i;
-    uint t;
-    for (i = 1; i < size; i++) {
-        int j = i;
-        while (j > 0 && array[j - 1] > array[j]) {
-            t = array[j];
-            array[j] = array[j - 1];
-            array[j - 1] = t;
-            j--;
-        }
-    }
-}
 
 double fill_array(uint* array, int size, int threads) {
     uint seed;
@@ -65,18 +29,21 @@ double fill_array(uint* array, int size, int threads) {
 
 double split_buckets(uint* array, int size, bucket** buckets, int threads) {
     uint current;
+    bucket b;
     int i, bi, my_n;
     double start, end;
 
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(i, bi, my_n, current) shared(array, buckets)
+#pragma omp parallel num_threads(threads) private(i, bi, my_n, current, b) shared(array, buckets)
     {
         my_n = omp_get_thread_num();
 #pragma omp for schedule(static)
         for (i = 0; i < size; i++) {
             current = array[i];
             bi = N_BUCKETS * current / MY_RAND_MAX;
-            insert(&buckets[my_n][bi], current);
+            b = buckets[my_n][bi];
+            b.array[b.size] = current;
+            (&buckets[my_n][bi])->size += 1;
         }
     }
     end = omp_get_wtime();
@@ -86,12 +53,18 @@ double split_buckets(uint* array, int size, bucket** buckets, int threads) {
 
 double sort_buckets(bucket** buckets, int threads) {
     bucket b;
+    int i, my_n;
     double start, end;
 
     start = omp_get_wtime();
-    for (int i = 0; i < N_BUCKETS; i++) {
-        b = buckets[0][i];
-        // insert_sort(&b.array, b.size);
+#pragma omp parallel num_threads(threads) private(i, my_n, b) shared(buckets)
+    {
+        my_n = omp_get_thread_num();
+#pragma omp for schedule(static)
+        for (i = 0; i < N_BUCKETS; i++) {
+            b = buckets[my_n][i];
+            insert_sort(b.array, b.size);
+        }
     }
     end = omp_get_wtime();
 
@@ -99,9 +72,17 @@ double sort_buckets(bucket** buckets, int threads) {
 }
 
 double merge_buckets(uint* array, bucket** buckets, int threads) {
+    bucket b;
     double start, end;
 
     start = omp_get_wtime();
+    for (int i = 0; i < N_BUCKETS; i++) {
+        b = buckets[0][i];
+        printf("bucket %d %d\n", i, b.size);
+        for (int j = 0; j < b.size; j++) {
+            printf("%d", b.array[j]);
+        }
+    }
 
     end = omp_get_wtime();
 
@@ -130,10 +111,15 @@ int main(int argc, char** argv) {
     double time_fill = fill_array(array, size, threads);
     double time_split = split_buckets(array, size, buckets, threads);
     double time_sort = sort_buckets(buckets, threads);
-    double time_merge = merge_buckets(array, buckets, threads);
+    double time_merge = 0;  // merge_buckets(array, buckets, threads);
 
     if (!debug) {
-        printf("%d,%f,%f\n", threads, time_fill, time_split);
+        printf("%d,%f,%f,%f,%f\n",
+               threads,
+               time_fill,
+               time_split,
+               time_sort,
+               time_merge);
     } else {
         for (int i = 0; i < size; i++) {
             printf("%d\n", array[i]);
@@ -141,5 +127,12 @@ int main(int argc, char** argv) {
     }
 
     free((void*)array);
+    for (int j = 0; j < threads; j++) {
+        for (int i = 0; i < N_BUCKETS; i++) {
+            free((void*)buckets[j][i].array);
+        }
+        free((void*)buckets[j]);
+    }
+    free((void*)buckets);
     return 0;
 }

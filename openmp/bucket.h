@@ -1,7 +1,7 @@
 #include <omp.h>
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
+
+#define MY_RAND_MAX 32768
 
 typedef struct bucket {
     uint* array;
@@ -11,6 +11,6 @@ typedef struct bucket {
 
 bucket new_bucket(int size);
 
-double fill_array(uint* array, int size, int threads);
-
 uint p_rand(uint current);
+
+void insert_sort(uint* array, int size);
