@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bucket.h"
+#include "buckets/bucket.h"
 
-#define N_BUCKETS 10
+#define N_BUCKETS 12
 
 double fill_array(uint* array, int size, int threads) {
     uint seed;
@@ -105,12 +105,6 @@ double merge_array(uint* array, bucket** buckets, int threads) {
     double start, end;
 
     start = omp_get_wtime();
-// for (int i = 0; i < N_BUCKETS; i++) {
-//     printf("%d ", size);
-//     s = &array[size];
-//     memcpy(s, buckets[0][i].array, buckets[0][i].size * sizeof(uint));
-//     size += buckets[0][i].size;
-// }
 #pragma omp parallel num_threads(threads) private(i, j, s, size) shared(array, buckets)
     {
 #pragma omp for schedule(static)
@@ -119,13 +113,11 @@ double merge_array(uint* array, bucket** buckets, int threads) {
             for (j = 0; j < i; j++) {
                 size += buckets[0][j].size;
             }
-            printf("%d ", size);
             s = &array[size];
             memcpy(s, buckets[0][i].array, buckets[0][i].size * sizeof(uint));
         }
     }
     end = omp_get_wtime();
-    printf("\n");
 
     return end - start;
 }
@@ -145,7 +137,7 @@ int main(int argc, char** argv) {
     for (int j = 0; j < threads; j++) {
         buckets[j] = (bucket*)malloc(sizeof(bucket) * N_BUCKETS);
         for (int i = 0; i < N_BUCKETS; i++) {
-            buckets[j][i] = new_bucket(size * 0.3);
+            buckets[j][i] = new_bucket(size * 0.32);
         }
     }
 
@@ -155,14 +147,20 @@ int main(int argc, char** argv) {
     double time_sort = sort_buckets(buckets, threads);
     double time_merge_a = merge_array(array, buckets, threads);
 
+    bool sorted = true;
+    for (int i = 1; i < size; i++) {
+        sorted = sorted && array[i - 1] <= array[i];
+    }
+
     if (!debug) {
-        printf("%d,%f,%f,%f,%f,%f\n",
+        printf("%d,%f,%f,%f,%f,%f,%d\n",
                threads,
                time_fill,
                time_split,
                time_merge_b,
                time_sort,
-               time_merge_a);
+               time_merge_a,
+               sorted);
     } else {
         for (int i = 0; i < size; i++) {
             printf("%d\n", array[i]);

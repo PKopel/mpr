@@ -1,7 +1,7 @@
 CC ?= gcc
 OPEN_MP := -Wall -fopenmp
 OPTIONS ?= 
-BUCKET ?= bucket.h bucket.c
+BUCKET ?= buckets/bucket.h buckets/bucket.c
 ARGS ?=
 
 .PRECIOUS: %.o
