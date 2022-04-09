@@ -72,6 +72,7 @@ double merge_buckets(bucket** buckets, int threads) {
                 memcpy(s, buckets[j][i].array, buckets[j][i].size * sizeof(uint));
                 b.size += buckets[j][i].size;
                 // clean up unused buckets
+                free((void*)buckets[j][i].array);
                 buckets[j][i].size = 0;
             }
             buckets[0][i] = b;
@@ -167,10 +168,10 @@ int main(int argc, char** argv) {
     }
 
     free((void*)array);
+    for (int i = 0; i < N_BUCKETS; i++) {
+        free((void*)buckets[0][i].array);
+    }
     for (int j = 0; j < threads; j++) {
-        for (int i = 0; i < N_BUCKETS; i++) {
-            free((void*)buckets[j][i].array);
-        }
         free((void*)buckets[j]);
     }
     free((void*)buckets);
