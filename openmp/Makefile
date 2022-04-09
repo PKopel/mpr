@@ -1,11 +1,13 @@
 CC ?= gcc
-OPTIONS ?= -Wall -fopenmp
+OPEN_MP := -Wall -fopenmp
+OPTIONS ?= 
+BUCKET ?= buckets/bucket.h buckets/bucket.c
 ARGS ?=
 
 .PRECIOUS: %.o
 
 %.o: %.c 
-	@$(CC) $(OPTIONS) -o $@ $< 
+	@$(CC) $(OPTIONS) $(OPEN_MP) -o $@ $(BUCKET) $< 
 
 run-%: %.o 
 	@./$< $(ARGS)
