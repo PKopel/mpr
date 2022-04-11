@@ -21,7 +21,7 @@ double fill_array(uint* array, int size, int threads) {
 #pragma omp for schedule(static)
         for (i = 0; i < size; i++) {
             seed = p_rand(seed);
-            array[i] = seed % 20;
+            array[i] = seed;
         }
     }
     end = omp_get_wtime();
