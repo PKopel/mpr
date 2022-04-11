@@ -13,4 +13,8 @@ bucket new_bucket(int size);
 
 uint p_rand(uint current);
 
+void swap(uint* xp, uint* yp);
+
 void insert_sort(uint* array, int size);
+
+void bubble_sort(uint* array, int n);
