@@ -29,17 +29,18 @@ double fill_array(uint* array, int size, int threads) {
 double split_buckets(uint* array, int size, bucket** buckets, int n_buckets, int threads) {
     uint current;
     bucket b;
-    int i, bi, my_n;
+    int i, bi, nb, my_n;
     double start, end;
 
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(i, bi, my_n, current, b) shared(array, buckets)
+#pragma omp parallel num_threads(threads) private(i, bi, my_n, current, b, nb) shared(array, buckets)
     {
         my_n = omp_get_thread_num();
+        nb = n_buckets;
 #pragma omp for schedule(static)
         for (i = 0; i < size; i++) {
             current = array[i];
-            bi = n_buckets * current / MY_RAND_MAX;
+            bi = nb * current / MY_RAND_MAX;
             b = buckets[my_n][bi];
             b.array[b.size] = current;
             (&buckets[my_n][bi])->size += 1;
@@ -53,21 +54,22 @@ double split_buckets(uint* array, int size, bucket** buckets, int n_buckets, int
 double merge_buckets(bucket** buckets, int n_buckets, int threads) {
     bucket b;
     uint* s;
-    int i, nb, sum = 0;
+    int i, nb, nt, sum = 0;
     double start, end;
 
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(i, sum, b, s, nb) shared(buckets)
+#pragma omp parallel num_threads(threads) private(i, sum, b, s, nb, nt) shared(buckets)
     {
         // strange, but without this segfaults happen
         nb = n_buckets;
+        nt = threads;
 #pragma omp for schedule(static)
         for (i = 0; i < nb; i++) {
-            for (int j = 0; j < threads; j++) {
+            for (int j = 0; j < nt; j++) {
                 sum += buckets[j][i].size;
             }
             b = new_bucket(sum);
-            for (int j = 0; j < threads; j++) {
+            for (int j = 0; j < nt; j++) {
                 s = &b.array[b.size];
                 memcpy(s, buckets[j][i].array, buckets[j][i].size * sizeof(uint));
                 b.size += buckets[j][i].size;
@@ -85,14 +87,19 @@ double merge_buckets(bucket** buckets, int n_buckets, int threads) {
 
 double sort_buckets(bucket** buckets, int n_buckets, int threads) {
     bucket b;
-    int i;
+    int i, nb;
     double start, end;
 
     start = omp_get_wtime();
-#pragma omp parallel for schedule(static) num_threads(threads) private(i, b) shared(buckets)
-    for (i = 0; i < n_buckets; i++) {
-        b = buckets[0][i];
-        insert_sort(b.array, b.size);
+#pragma omp parallel num_threads(threads) private(i, b, nb) shared(buckets)
+    {
+        // strange, but without this segfaults happen
+        nb = n_buckets;
+#pragma omp for schedule(static)
+        for (i = 0; i < nb; i++) {
+            b = buckets[0][i];
+            insert_sort(b.array, b.size);
+        }
     }
     end = omp_get_wtime();
 
@@ -101,14 +108,15 @@ double sort_buckets(bucket** buckets, int n_buckets, int threads) {
 
 double merge_array(uint* array, bucket** buckets, int n_buckets, int threads) {
     uint* s;
-    int i, j, size;
+    int i, j, nb, size;
     double start, end;
 
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(i, j, s, size) shared(array, buckets)
+#pragma omp parallel num_threads(threads) private(i, j, s, nb, size) shared(array, buckets)
     {
+        nb = n_buckets;
 #pragma omp for schedule(static)
-        for (i = 0; i < n_buckets; i++) {
+        for (i = 0; i < nb; i++) {
             size = 0;
             for (j = 0; j < i; j++) {
                 size += buckets[0][j].size;
