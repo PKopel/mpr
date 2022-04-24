@@ -5,8 +5,8 @@
 #include <stdlib.h>
 
 uint p_rand(uint current) {
-    uint next = (current + 1) * 1103515243 + 12345;
-    return (uint)(next / 65536) % MY_RAND_MAX;
+    uint next = current * (uint)48271;
+    return (uint)next % MY_RAND_MAX;
 }
 
 bucket new_bucket(int cap) {

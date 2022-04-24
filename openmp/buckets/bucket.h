@@ -1,7 +1,7 @@
 #include <omp.h>
 #include <stdlib.h>
 
-#define MY_RAND_MAX 32768
+#define MY_RAND_MAX 2147483647
 
 typedef struct bucket {
     uint* array;
