@@ -41,7 +41,7 @@
 
 uint p_rand(uint current) {
     uint next = current * (uint)48271;
-    return (uint)next % 131071;
+    return (uint)next % 524288;
 }
 
 double fill_array(uint* array, int size, int threads) {

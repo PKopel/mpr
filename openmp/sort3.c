@@ -117,18 +117,21 @@ double merge_array(uint* array, bucket* buckets, int n_buckets, int threads) {
     int i, j, nb, size;
     double start, end;
 
+    int* sizes = (int*)malloc(sizeof(int) * n_buckets);
+
+    sizes[0] = 0;
+    for (i = 0; i < n_buckets - 1; i++) {
+        sizes[i + 1] = sizes[i] + buckets[i].size;
+    }
+
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(i, j, s, nb, size) shared(array, buckets)
+#pragma omp parallel num_threads(threads) private(i, j, s, nb, size) shared(array, buckets, sizes)
     {
         nb = n_buckets;
 #pragma omp for schedule(static, nb / threads)
         for (i = 0; i < nb; i++) {
             if (buckets[i].size != 0) {
-                size = 0;
-                for (j = 0; j < i; j++) {
-                    size += buckets[j].size;
-                }
-                s = &array[size];
+                s = &array[sizes[i]];
                 memcpy(s, buckets[i].array, buckets[i].size * sizeof(uint));
             }
         }
