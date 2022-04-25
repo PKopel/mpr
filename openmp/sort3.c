@@ -5,8 +5,6 @@
 #include <string.h>
 #include "buckets/bucket.h"
 
-int chunks;
-
 double fill_array(uint* array, int size, int threads) {
     uint seed;
     double start, end;
@@ -149,7 +147,6 @@ int main(int argc, char** argv) {
     int threads = atoi(argv[1]);
     int bucket_promil = atoi(argv[2]);
     int size = atoi(argv[3]);
-    chunks = size / 4;
     int n_buckets = size * bucket_promil / 1000;
 
     bool debug = (argc == 5) && (argv[4][0] == 'd');
