@@ -114,7 +114,7 @@ double sort_buckets(bucket* buckets, int n_buckets, int threads) {
 
 double merge_array(uint* array, bucket* buckets, int n_buckets, int threads) {
     uint* s;
-    int i, j, nb, size;
+    int i, nb;
     double start, end;
 
     int* sizes = (int*)malloc(sizeof(int) * n_buckets);
@@ -125,7 +125,7 @@ double merge_array(uint* array, bucket* buckets, int n_buckets, int threads) {
     }
 
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(i, j, s, nb, size) shared(array, buckets, sizes)
+#pragma omp parallel num_threads(threads) private(i, s, nb) shared(array, buckets, sizes)
     {
         nb = n_buckets;
 #pragma omp for schedule(static, nb / threads)
@@ -156,7 +156,7 @@ int main(int argc, char** argv) {
 
     uint* array = (uint*)malloc(sizeof(uint) * size);
     bucket** buckets = (bucket**)malloc(sizeof(bucket*) * threads);
-    int b_size = size / n_buckets * 100;
+    int b_size = size / n_buckets * 50;
     b_size = b_size > 0 ? b_size : 1;
     for (int j = 0; j < threads; j++) {
         buckets[j] = (bucket*)malloc(sizeof(bucket) * n_buckets);
