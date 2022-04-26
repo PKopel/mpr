@@ -43,11 +43,10 @@ double split_buckets(uint* array, int size, bucket** buckets, int n_buckets, int
             bi = current / ((MY_RAND_MAX / nb) + 1);
             b = buckets[my_n][bi];
             if (b.size + 1 >= b.cap) {
-                printf("%d %d %d %d\n", my_n, bi, b.size, b.cap);
-                fflush(NULL);
                 exit(1);
             }
             b.array[b.size] = current;
+            // needs pointer to use result later
             (&buckets[my_n][bi])->size += 1;
         }
     }
@@ -59,30 +58,27 @@ double split_buckets(uint* array, int size, bucket** buckets, int n_buckets, int
 double merge_buckets(bucket** buckets, int n_buckets, int threads) {
     bucket b;
     uint* s;
-    int j, i, nb, nt, sum = 0;
+    int i, nb, nt;
     double start, end;
 
     start = omp_get_wtime();
-#pragma omp parallel num_threads(threads) private(j, i, sum, b, s, nb, nt) shared(buckets)
+#pragma omp parallel num_threads(threads) private(i, b, s, nb, nt) shared(buckets)
     {
         nb = n_buckets;
         nt = threads;
 #pragma omp for schedule(static, nb / threads)
         for (i = 0; i < nb; i++) {
-            sum = 0;
-            for (j = 0; j < nt; j++) {
-                sum += buckets[j][i].size;
+            b = buckets[0][i];
+            for (int j = 1; j < nt; j++) {
+                if (buckets[j][i].size != 0) {
+                    s = &b.array[buckets[0][i].size];
+                    memcpy(s, buckets[j][i].array, buckets[j][i].size * sizeof(uint));
+                    // needs pointer to use result later
+                    (&buckets[0][i])->size += buckets[j][i].size;
+                    // "clean" up unused buckets
+                    buckets[j][i].size = 0;
+                }
             }
-            b = new_bucket(sum);
-            for (j = 0; j < nt; j++) {
-                s = &b.array[b.size];
-                memcpy(s, buckets[j][i].array, buckets[j][i].size * sizeof(uint));
-                b.size += buckets[j][i].size;
-                // clean up unused buckets
-                free(buckets[j][i].array);
-                buckets[j][i].size = 0;
-            }
-            buckets[0][i] = b;
         }
     }
     end = omp_get_wtime();
@@ -153,9 +149,14 @@ int main(int argc, char** argv) {
 
     uint* array = (uint*)malloc(sizeof(uint) * size);
     bucket** buckets = (bucket**)malloc(sizeof(bucket*) * threads);
-    int b_size = size / n_buckets * 50;
+    int b_size = size / 100;
     b_size = b_size > 0 ? b_size : 1;
-    for (int j = 0; j < threads; j++) {
+
+    buckets[0] = (bucket*)malloc(sizeof(bucket) * n_buckets);
+    for (int i = 0; i < n_buckets; i++) {
+        buckets[0][i] = new_bucket(b_size * threads);
+    }
+    for (int j = 1; j < threads; j++) {
         buckets[j] = (bucket*)malloc(sizeof(bucket) * n_buckets);
         for (int i = 0; i < n_buckets; i++) {
             buckets[j][i] = new_bucket(b_size);
@@ -175,7 +176,8 @@ int main(int argc, char** argv) {
     }
 
     if (!debug) {
-        printf("%d,%d,%f,%f,%f,%f,%f,%f,%d\n",
+        printf("%d,%d,%d,%f,%f,%f,%f,%f,%f,%d\n",
+               size,
                threads,
                n_buckets,
                time_fill,
@@ -192,10 +194,10 @@ int main(int argc, char** argv) {
     }
 
     free((void*)array);
-    for (int i = 0; i < n_buckets; i++) {
-        free((void*)buckets[0][i].array);
-    }
     for (int j = 0; j < threads; j++) {
+        for (int i = 0; i < n_buckets; i++) {
+            free((void*)buckets[j][i].array);
+        }
         free((void*)buckets[j]);
     }
     free((void*)buckets);
