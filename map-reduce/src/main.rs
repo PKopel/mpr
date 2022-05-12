@@ -3,7 +3,7 @@ use std::env;
 use std::fs::{File, OpenOptions};
 use std::io::{self, prelude::*};
 
-fn count<'a>(contents: io::BufReader<File>) -> HashMap<String, isize> {
+fn count(contents: io::BufReader<File>) -> HashMap<String, isize> {
     let mut results = HashMap::new();
 
     contents
