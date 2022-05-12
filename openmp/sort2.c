@@ -6,24 +6,24 @@
 
 typedef struct bucket {
     uint* array;
-    long size;
-    long cap;
+    int size;
+    int cap;
 } bucket;
 
-bucket* new_bucket(long cap) {
+bucket* new_bucket(int cap) {
     uint* array = (uint*)malloc(sizeof(uint) * cap);
-    if(array == NULL) {
-      printf("Could not malloc\n");
-      exit(1);
+    if (array == NULL) {
+        printf("Could not malloc bucket's array\n");
+        exit(1);
     }
-    bucket* new = (bucket*) malloc(sizeof(bucket));
-    if(new == NULL) {
-      printf("Could not malloc\n");
-      exit(1);
+    bucket* new = (bucket*)malloc(sizeof(bucket));
+    if (new == NULL) {
+        printf("Could not malloc bucket\n");
+        exit(1);
     }
-    new -> array = array;
-    new -> size = 0;
-    new -> cap = cap;
+    new->array = array;
+    new->size = 0;
+    new->cap = cap;
     return new;
 }
 
@@ -32,52 +32,51 @@ void insert(bucket* b, uint v) {
     b->size += 1;
 }
 
-bucket** create_buckets(long amount, long bucketSize, long threads) {
-    bucket** buckets = (bucket**) malloc(sizeof(bucket*) * amount);
-    if(buckets == NULL) {
-      printf("Could not malloc\n");
-      exit(1);
+bucket** create_buckets(int amount, int bucketSize, int threads) {
+    bucket** buckets = (bucket**)malloc(sizeof(bucket*) * amount);
+    if (buckets == NULL) {
+        printf("Could not malloc buckets\n");
+        exit(1);
     }
-    long i = 0;
-    #pragma omp pararell for num_threads(threads)
-    for(i = 0; i < amount; i++) {
+    int i = 0;
+#pragma omp parallel for num_threads(threads)
+    for (i = 0; i < amount; i++) {
         buckets[i] = new_bucket(bucketSize);
     }
     return buckets;
 }
 
-void insert_sort(uint* array, long arraySize) {
+void insert_sort(uint* array, int arraySize) {
     int i;
-    for(i = 1; i < arraySize; i++) {
+    for (i = 1; i < arraySize; i++) {
         int j = i;
-        while(j > 0 && array[j-1] > array[j]) {
+        while (j > 0 && array[j - 1] > array[j]) {
             uint t = array[j];
-            array[j] = array[j-1];
-            array[j-1] = t;
+            array[j] = array[j - 1];
+            array[j - 1] = t;
             j--;
         }
     }
 }
 
-int maxnum = 524288;
+int maxnum = 2097151;
 
 uint p_rand(uint current) {
     uint next = current * (uint)48271;
     return (uint)next % maxnum;
 }
 
-double fill_array(uint* array, long size, int threads) {
+void fill_array(uint* array, int size, int threads) {
     uint seed;
-    double start, end;
-    long i;
+    int i;
     int my_n;
 
-    #pragma omp parallel num_threads(threads) private(i, seed, my_n) shared(array)
+#pragma omp parallel num_threads(threads) private(i, seed, my_n) shared(array)
     {
-        my_n = omp_get_thread_num(); 
-        seed = (uint) omp_get_wtime() + (uint) my_n;
+        my_n = omp_get_thread_num();
+        seed = (uint)omp_get_wtime() + (uint)my_n;
 
-        #pragma omp for schedule(dynamic, 1000)
+#pragma omp for schedule(dynamic, 1000)
         for (i = 0; i < size; i++) {
             seed = p_rand(seed + i);
             array[i] = seed;
@@ -85,12 +84,11 @@ double fill_array(uint* array, long size, int threads) {
     }
 }
 
-double divide_to_buckets(uint* array, long size, bucket** buckets, long bucketAmount, omp_lock_t* bucketLocks, int threads) {
-    long bucketRange = (maxnum / (bucketAmount)) + 1;
-    long i;
-    #pragma omp parallel num_threads(threads) private(i) shared(array, buckets, bucketRange)
+double divide_to_buckets(uint* array, int size, bucket** buckets, int bucketAmount, omp_lock_t* bucketLocks, int threads) {
+    int i;
+#pragma omp parallel num_threads(threads) private(i) shared(array, buckets)
     {
-       #pragma omp for schedule(dynamic, 1000)
+#pragma omp for schedule(dynamic, 1000)
         for (i = 0; i < size; i++) {
             uint value = array[i];
             uint bucketNum = bucketAmount * value / maxnum;
@@ -103,29 +101,28 @@ double divide_to_buckets(uint* array, long size, bucket** buckets, long bucketAm
 
 void print_buckets(bucket** buckets, uint bucketAmount) {
     int i, j;
-    for(i = 0; i < bucketAmount; i++) {
+    for (i = 0; i < bucketAmount; i++) {
         printf("Bucket %d: ", i);
-        for(j = 0; j < buckets[i]->size; j++) {
+        for (j = 0; j < buckets[i]->size; j++) {
             printf("%d,", buckets[i]->array[j]);
         }
         printf("\n");
     }
 }
 
-omp_lock_t* init_locks(long amount, int threads) {
+omp_lock_t* init_locks(int amount, int threads) {
     omp_lock_t* bucketLocks = malloc(sizeof(omp_lock_t) * amount);
     int i;
-    #pragma omp parallel for num_threads(threads)
+#pragma omp parallel for num_threads(threads)
     for (i = 0; i < amount; i++) {
         omp_init_lock(&(bucketLocks[i]));
     }
     return bucketLocks;
 }
 
-
 void destroy_locks(omp_lock_t* bucketLocks, uint bucketAmount, int threads) {
     int i;
-    #pragma omp parallel for num_threads(threads) private(i) shared(bucketLocks, bucketAmount)
+#pragma omp parallel for num_threads(threads) private(i) shared(bucketLocks, bucketAmount)
     for (i = 0; i < bucketAmount; i++) {
         omp_destroy_lock(&(bucketLocks[i]));
     }
@@ -133,8 +130,8 @@ void destroy_locks(omp_lock_t* bucketLocks, uint bucketAmount, int threads) {
 
 void destroy_buckets(bucket** buckets, uint bucketAmount, int threads) {
     int i;
-    #pragma omp parallel for num_threads(threads)
-    for(i = 0; i < bucketAmount; i++) {
+#pragma omp parallel for num_threads(threads)
+    for (i = 0; i < bucketAmount; i++) {
         free(buckets[i]->array);
         free(buckets[i]);
     }
@@ -143,27 +140,27 @@ void destroy_buckets(bucket** buckets, uint bucketAmount, int threads) {
 
 void sort_buckets(bucket** buckets, uint bucketAmount, int threads) {
     int i;
-    #pragma omp parallel num_threads(threads) private(i) shared(buckets, bucketAmount)
+#pragma omp parallel num_threads(threads) private(i) shared(buckets, bucketAmount)
     {
-        #pragma omp for schedule(dynamic, 1000)
-        for(i = 0; i< bucketAmount; i++) {
-            insert_sort(buckets[i] -> array, buckets[i] -> size);
+#pragma omp for schedule(dynamic, 1000)
+        for (i = 0; i < bucketAmount; i++) {
+            insert_sort(buckets[i]->array, buckets[i]->size);
         }
     }
 }
 
 void copy_to_array(bucket** buckets, uint bucketAmount, uint* array, int threads) {
-    long* sums = (long*) malloc(sizeof(long) * (bucketAmount + 1));
+    int* sums = (int*)malloc(sizeof(int) * (bucketAmount + 1));
     int i;
     sums[0] = 0;
     for (i = 0; i < bucketAmount; i++) {
-        sums[i + 1] = sums[i] + buckets[i] -> size;
+        sums[i + 1] = sums[i] + buckets[i]->size;
     }
-    #pragma omp parallel private(i) shared(buckets, bucketAmount, array) num_threads(threads)
+#pragma omp parallel private(i) shared(buckets, bucketAmount, array) num_threads(threads)
     {
-        #pragma omp for schedule(dynamic, 1000)
+#pragma omp for schedule(dynamic, 1000)
         for (i = 0; i < bucketAmount; i++) {
-            memcpy(array + sums[i], buckets[i] -> array, buckets[i] -> size * sizeof(uint));
+            memcpy(array + sums[i], buckets[i]->array, buckets[i]->size * sizeof(uint));
         }
     }
     free(sums);
@@ -173,7 +170,8 @@ bool is_sorted(uint* array, uint length) {
     int i;
     int prev = -1;
     for (i = 0; i < length; i++) {
-        if (prev > (int)array[i]) return false;
+        if (prev > (int)array[i])
+            return false;
         prev = array[i];
     }
     return true;
@@ -186,28 +184,28 @@ int main(int argc, char** argv) {
     }
 
     int threads = atoi(argv[1]);
-    long size = atol(argv[2]);
-    long bucketAmount = atol(argv[3]);
-    long bucketSize = atol(argv[4]);
+    int size = atol(argv[2]);
+    int bucketAmount = atol(argv[3]);
+    int bucketSize = atol(argv[4]);
 
-    uint* array = (uint*)malloc((long)(sizeof(uint)) * size);
-    if(array == NULL) {
-      printf("Could not malloc\n");
-      exit(1);
+    uint* array = (uint*)malloc((int)(sizeof(uint)) * size);
+    if (array == NULL) {
+        printf("Could not malloc array\n");
+        exit(1);
     }
 
-    double bucketCreationStart;
-    double lockCreationStart;
+    // double bucketCreationStart;
+    // double lockCreationStart;
     double generationStart;
     double bucketDivisionStart;
     double bucketSortStart;
     double bucketCopyStart;
     double algEnd;
 
-    bucketCreationStart = omp_get_wtime();
+    // bucketCreationStart = omp_get_wtime();
     bucket** buckets = create_buckets(bucketAmount, bucketSize, threads);
 
-    lockCreationStart = omp_get_wtime();
+    // lockCreationStart = omp_get_wtime();
     omp_lock_t* bucketLocks = init_locks(bucketAmount, threads);
 
     generationStart = omp_get_wtime();
@@ -220,7 +218,7 @@ int main(int argc, char** argv) {
     sort_buckets(buckets, bucketAmount, threads);
 
     bucketCopyStart = omp_get_wtime();
-    copy_to_array(buckets, bucketAmount, array, threads); 
+    copy_to_array(buckets, bucketAmount, array, threads);
 
     algEnd = omp_get_wtime();
 
@@ -241,7 +239,7 @@ int main(int argc, char** argv) {
     //     printf("Array sorting error. \n");
     // }
     // bucketAmount,arraySize,Threads,generationTime,bucketDivisionTime,bucketSortTime,copyToArrayTime,algTime
-    printf("%ld,%ld,%d,%f,%f,%f,%f,%f\n", bucketAmount, size, threads, bucketDivisionStart - generationStart, bucketSortStart - bucketDivisionStart, bucketCopyStart - bucketSortStart, algEnd - bucketCopyStart, algEnd - generationStart);
+    printf("%d,%d,%d,%f,%f,%f,%f,%f\n", bucketAmount, size, threads, bucketDivisionStart - generationStart, bucketSortStart - bucketDivisionStart, bucketCopyStart - bucketSortStart, algEnd - bucketCopyStart, algEnd - generationStart);
 
     free(array);
     return 0;
