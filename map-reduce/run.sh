@@ -8,8 +8,8 @@ for s in 1 5 10; do
 done
 
 for s in 1 5 10; do
-    hdfs dfs -put ${s}G-input/gutenberg-${s}G-utf-8.txt ${s}G-input
     hdfs dfs -mkdir ${s}G-input
+    hdfs dfs -put ${s}G-input/gutenberg-${s}G-utf-8.txt ${s}G-input
     for i in {1..2}; do 
         { time hadoop jar /usr/lib/hadoop/hadoop-streaming.jar \
          -files mapper.py,reducer.py \
